@@ -1,4 +1,5 @@
 import os
+import shutil
 from dotenv import load_dotenv
 
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
@@ -20,20 +21,25 @@ documents = loader.load()
 # 2. Split documents into chunks
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=500,
-    chunk_overlap=100
+    chunk_overlap=100,
+    separators=["\n\n", "\n", ".", " ", ""]
 )
 chunks = splitter.split_documents(documents)
 
 # 3. Convert chunks into embeddings and store in vector DB
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
+if os.path.exists("./chroma_db"):
+    shutil.rmtree("./chroma_db")
+
 vector_store = Chroma.from_documents(
     documents=chunks,
     embedding=embeddings,
-    persist_directory="./chroma_db"
+    # persist_directory="./chroma_db"
+    # persistence was causing duplicate embeddings.  
 )
 
-retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+retriever = vector_store.as_retriever(search_kwargs={"k": 2})
 
 # 4. Create prompt
 prompt = ChatPromptTemplate.from_template("""
@@ -50,8 +56,16 @@ Question:
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 # 5. Ask question
-def ask(question):
+def ask(question, show_sources=False):
     retrieved_docs = retriever.invoke(question)
+
+    if show_sources:
+        print("\nRetrieved chunks:")
+        for i, doc in enumerate(retrieved_docs, start=1):
+            print(f"\n--- Chunk {i} ---")
+            print("Source:", doc.metadata.get("source"))
+            print(doc.page_content)
+
     context = "\n\n".join(doc.page_content for doc in retrieved_docs)
 
     messages = prompt.format_messages(
@@ -62,7 +76,6 @@ def ask(question):
     response = llm.invoke(messages)
     return response.content
 
-
 if __name__ == "__main__":
     try:
         while True:
@@ -72,7 +85,7 @@ if __name__ == "__main__":
                 print("Goodbye 👋")
                 break
 
-            answer = ask(question)
+            answer = ask(question, show_sources=True) # show_sources is set to True for demonstration. You can set it to False if you don't want to see the retrieved chunks.
             print("\nAnswer:")
             print(answer)
 
