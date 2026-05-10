@@ -17,14 +17,21 @@ loader = DirectoryLoader(
     loader_cls=TextLoader
 )
 documents = loader.load()
+# adding extra logs for checking if the docs are loading correctly
+print(f"Loaded documents: {len(documents)}")
+for doc in documents:
+    print(doc.metadata)
+    print(doc.page_content[:100])
 
 # 2. Split documents into chunks
 splitter = RecursiveCharacterTextSplitter(
-    chunk_size=500,
-    chunk_overlap=100,
+    chunk_size=300,
+    chunk_overlap=75,
     separators=["\n\n", "\n", ".", " ", ""]
 )
 chunks = splitter.split_documents(documents)
+# adding extra logs for checking if the chunks are created correctly
+print(f"Created chunks: {len(chunks)}")
 
 # 3. Convert chunks into embeddings and store in vector DB
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -39,7 +46,7 @@ vector_store = Chroma.from_documents(
     # persistence was causing duplicate embeddings.  
 )
 
-retriever = vector_store.as_retriever(search_kwargs={"k": 2})
+retriever = vector_store.as_retriever(search_kwargs={"k": 4})
 
 # 4. Create prompt
 prompt = ChatPromptTemplate.from_template("""

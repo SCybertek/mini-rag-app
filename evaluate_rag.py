@@ -62,6 +62,10 @@ def rag_target(inputs: dict) -> dict:
 
 
 # 3. Evaluator: score answer based on expected keywords
+# keyword match_evaluator checks how many of the expected keywords are present in the answer and gives a score between 0 and 1. (0.5 for half matched)
+# It also returns a comment with details on which keywords were matched.
+# it is brittle but simple
+
 def keyword_match_evaluator(inputs: dict, outputs: dict, reference_outputs: dict) -> dict:
     answer = outputs["answer"].lower()
     expected_keywords = reference_outputs["expected_keywords"]
